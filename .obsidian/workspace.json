@@ -1,0 +1,247 @@
+{
+  "main": {
+    "id": "532e71b516e4ff9c",
+    "type": "split",
+    "children": [
+      {
+        "id": "2348884223bc7678",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "32cb844a5ee8bf17",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "投机推理/投机推理medusa.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "投机推理medusa"
+            }
+          },
+          {
+            "id": "16fbb6fc960e2c5f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "vllm/vllm v1的架构变化.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "vllm v1的架构变化"
+            }
+          },
+          {
+            "id": "0152e18f80f06ea5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "flash attention/怎么很好的背 flash attention，流利，顺畅，提升初面的印象.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "怎么很好的背 flash attention，流利，顺畅，提升初面的印象"
+            }
+          }
+        ],
+        "currentTab": 2
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "be8153c22341f729",
+    "type": "split",
+    "children": [
+      {
+        "id": "f221a3eb771b6d31",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5b539ccd50906684",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "8de39adc079441d9",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "c2ee6c832c433828",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 247.5
+  },
+  "right": {
+    "id": "967c2dca59945c7a",
+    "type": "split",
+    "children": [
+      {
+        "id": "3fe0dbaedf2ef50f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a04d8715b046dbdb",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "每日总结/3.5.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "3.5 的反向链接列表"
+            }
+          },
+          {
+            "id": "da2c72dfa9e65453",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "CPP/基础.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "基础 的出链列表"
+            }
+          },
+          {
+            "id": "8ae07bbb90c72b4f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "896c24b0f2244e6a",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "flash attention/怎么很好的背 flash attention，流利，顺畅，提升初面的印象.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "怎么很好的背 flash attention，流利，顺畅，提升初面的印象 的大纲"
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false
+    }
+  },
+  "active": "0152e18f80f06ea5",
+  "lastOpenFiles": [
+    "flash attention/核心八股.md",
+    "flash attention/怎么很好的背 flash attention，流利，顺畅，提升初面的印象.md",
+    "投机推理/投机推理和medusa、eagle.md",
+    "vllm/vllm v1的架构变化.md",
+    "transformer算子的敏感性分析.md",
+    "Transformer的softmax为什么乘一个衰减系数.md",
+    "transformer的模型prefill和decode阶段的计算密度.md",
+    "PD分离的思考.md",
+    "对PD分离的理解（主要是指存储优化方向）.md",
+    "并行策略/分布式训练框架基础.md",
+    "并行策略/序列并行.md",
+    "并行策略/序列并行（sequence parallelism, context parallelism）与ring attention.md",
+    "大模型数据精度、计算量、MFU等琐碎内容/数据精度、数据结构与采样方法.md",
+    "CPP/基础.md",
+    "简历.md",
+    "目前对于我的技术栈的总结.md",
+    "大模型数据精度、计算量、MFU等琐碎内容/MFU计算.md",
+    "大模型数据精度、计算量、MFU等琐碎内容/手推显存、计算量、参数量.md",
+    "大模型数据精度、计算量、MFU等琐碎内容/模型量化（先存.md",
+    "推理加速的总路线.md",
+    "推理方面的技术streaming llm.md",
+    "推理部署可能面试八股.md",
+    "目前的几个问题.md",
+    "vllm/VLLM搞Paged attention的技术起点.md",
+    "vllm/vllm的PD分离策略.md",
+    "vllm/vllm 优化之 cuda_graph 详解.md",
+    "vllm/可不看",
+    "vllm/不看",
+    "量化",
+    "mooncake与PD分离/刘侃老师的文章",
+    "投机推理/Pasted image 20250410151252.png",
+    "大模型数据精度、计算量、MFU等琐碎内容",
+    "mooncake与PD分离/章明星老师对于mooncake的解读",
+    "GPU编程/深入浅出算子优化",
+    "Deepseek",
+    "GPU编程/谭升大佬的博客face2ai.com/Pasted image 20250329143854.png",
+    "GPU编程/谭升大佬的博客face2ai.com/Pasted image 20250329142054.png",
+    "GPU编程/谭升大佬的博客face2ai.com",
+    "GPU编程/某博客www.armcvai.cn",
+    "v2-5db77cb06ff3f353f3e053f404bd1a0a_720w.webp",
+    "vllm/核心可吟唱的八股/Pasted image 20250323103336.png",
+    "vllm/核心可吟唱的八股/Pasted image 20250323103127.png",
+    "GPU编程/Pasted image 20250322164715.png",
+    "GPU编程/调优指南/Pasted image 20250322155646.png",
+    "vllm/deepseekv2-profile-main/workspace/blog/data/caching-B32.png",
+    "vllm/deepseekv2-profile-main/workspace/blog/data/caching-B1.png"
+  ]
+}

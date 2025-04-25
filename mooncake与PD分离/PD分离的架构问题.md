@@ -1,0 +1,76 @@
+[LLM PD 分离背后的架构问题 - 知乎](https://zhuanlan.zhihu.com/p/27836625742)
+
+[PD 分离](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=PD+%E5%88%86%E7%A6%BB&zhida_source=entity)（Prefilling Decoding Disaggregation）推理是指将大模型推理的预填充阶段（P）和解码（D）阶段分离，以减少预填充与解码相互之间的影响，以便对两个阶段分别进行优化，提升 GPU 硬件的利用率，并减少推理延迟的一种推理技术方案。
+
+在 DistServe、Mooncake 等论文中介绍分离式架构之后，[DeepSeek V3](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=DeepSeek+V3&zhida_source=entity) 的报告让大家更进一步意识到 PD 分离可能是影响成本和性能的关键技术。
+
+[vLLM](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=vLLM&zhida_source=entity) 对 PD 分离已经有了一个 1P1D 的实验版本。除此之外的开源框架大多还都不支持，不过很多已经在计划、实现中了。但纵览这些实现、文章或者计划，可以看到 PD 分离的架构选型上有很多问题需要思考，我尝试列举一下：
+
+## **一、PD 是否直连传输？或是否需要 [KV Cache Store](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=KV+Cache+Store&zhida_source=entity)/Pool？**
+
+PD 直连就是预填充节点直接将 KV Cache 发送给解码节点，它的好处是延迟低。但也意味着在整个 batch 的计算过程中锁定了P、D 节点的对应关系，一旦解码节点出现了问题，比如压力过大、服务出错、传输阻塞，在重试时无法仅调度 D 节点，需要重新进行整个预填充、解码过程。在 prompt 较长时，或者在 PD 节点数不对等的场景下，例如 2 个 P 对应到 1 个 D，重调度意味着抛弃较长或者多个 prefill batch，重调度的沉没成本较高。
+
+使用 KV Cache Store/Pool 是在 P 和 D 之间增加了一个中间存储，预填充节点先将 KV Cache 写到中间存储，解码节点从中间存储读。这样做数据会多传输一次，增加了延迟，也增加了一些复杂度。但好处是容错性更好，还有就是预填充阶段本身也可以利用这个中间存储做 Prefix Caching。
+
+中间存储也会对其它一些架构变动的复杂度产生影响，参见下面问题 四 和 五。
+
+目前来看，Kimi [Mooncacke](https://link.zhihu.com/?target=https%3A//arxiv.org/abs/2407.00079)、vLLM 的[下一步设计](https://link.zhihu.com/?target=https%3A//docs.google.com/document/d/1Ab6TMW1E2CdHJJyCrpJnLhgmE2b_6leH5MVP9k72sjw/edit%3Fpli%3D1%26tab%3Dt.0%23heading%3Dh.611v2r4aqubz)、阿里 [RTP-LLM](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s/Zs61CDerMwI7JKbFyD001Q) 都使用或者计划使用基于 KV Cache Store/Pool 的方案，DeepSeek V3 报告中没有提到这部分。
+
+在一些计算配比均衡、故障风险较小的场景下，比如同机多卡之间的 PD 分离，PD 直连的方案也有其简单易部署的优势。
+
+## **二、P/D 是否按层发送/接收 KV Cache？**
+
+预填充最简单的实现是预填充节点完成第一个 token 的生成后，将所有的 KV Cache 传输给解码节点，这也是 vLLM 当前的实现。但这样实现有个问题，因为 KV Cache 的规模有可能非常大（尤其是原始 MHA），一个 batch 的 KV Cache 可能会是 GB 级别，都放在计算完成后传输，传输的延迟开销会比较大。
+
+Kimi [Mooncacke](https://link.zhihu.com/?target=https%3A//arxiv.org/abs/2407.00079) 和阿里 [RTP-LLM](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s/Zs61CDerMwI7JKbFyD001Q) 都采取了按层传输的方案，这是利用了 LLM 多层计算的自然特性。在完成一层的计算以后，就将这一层的 KV Cache 发送出去。这样 KV Cache 的发送就呈流式，既能降低延迟，也能使数据的发送更平滑。还存在一个更显著的优势，是 KV Cache 占用显存的时间更短，在显存紧张的情况下显存效率更高。
+
+但按层发送对推理引擎的修改显然更大。我还没有看到开源的实现，猜测按层发送的引入对推理引擎的优化应该会有一定的影响，这里可能还需要一些精巧的设计才能减少影响。另外，按层发送对于 PD 非直连的场景下，中间存储的实现也会显著更复杂，QPS * num_hidden_layers，考虑到连续性可能还需要存储预分配和 session 保持。
+
+因此对于 [MLA](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=MLA&zhida_source=entity) 这种 KV Cache 偏小的注意力实现，比如 DeepSeek V3 的 KV Cache 是 576B/token/layer，是否要做按层发送，也许要看一下实际收益。
+
+解码阶段和预填充阶段有所不同。解码需要多次迭代，在第一次迭代实现按层解码也没太大意义，而且涉及到计算的编排，应该需要拿到所有层的 KV Cache 才会开始计算。而且解码的计算时间比较长，如果解码的计算能够掩盖接收的延迟，不一定非要实现按层接收。
+
+解码时按层接收，对调度也有一定挑战。从时序上来说，先发请求给预填充，完成后再发请求给解码会更自然。同时请求预填充和解码，需要处理一些同步问题，比如预填充压力大、解码等 KV Cache 超时等等。比如像阿里 [RTP-LLM](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s/Zs61CDerMwI7JKbFyD001Q)，它会观测预填充的排队情况，当一个请求进入预填充执行阶段时，解码端开始启动显存申请。
+
+## **三、First Token 怎么处理**
+
+通常来说，预填充的同时会顺便把第一个 Token 计算出来，但计算到 hidden states 还是 token id 需要做一个选择。
+
+计算到 hidden states 的好处是，预填充节点完全不需要加载和计算 lm_head 参数。比如 DeepSeek V3 的 lm_head 参数量是 0.9B，如果计算到 hidden states，这部分参数就完全不需要加载了。vLLM 目前就是采取的这个方式，预填充除了需要发送 KV Cache 之外，还需要发送一个 hidden states，解码时引擎也需要能支持加载 hidden states 延续计算。
+
+计算到 token id 的好处是，发送的数据量小。以 DeepSeek V3 为例，hidden states 7K，token id 4B，完全可以跟着控制面消息传输。解码时引擎处理也更简单，因为 token id 到 token 的 detokenizer 一般是 CPU 查表，不涉及 tensor 的特殊处理。阿里 [RTP-LLM](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s/Zs61CDerMwI7JKbFyD001Q) 看起来采用的是这个方案。
+
+## **四、Prefiller 和 Decoder 是否能相互转换？**
+
+当到达请求的 prompt 长度有差异性的时候，预填充和解码就会出现压力的不均衡问题。因为整体的吞吐取决于 P 和 D 的全局资源利用，当 P 过载但 D 闲置，或者 P 闲置但 D 过载的时候，成本和性能都不是最优的。
+
+所以就需要考虑在 P 和 D 之间做负载均衡，要么从整个节点层面直接切换 P 和 D 的角色，要么 P 和 D 节点能够承担一些混杂的请求，比如通过 chunked prefill。
+
+这时候 P 和 D 是否直连对实现复杂度就有一些影响了，如果有中间存储的存在，通过 PD 转换做负载均衡的实现难度会降低很多。
+
+## **五、Decoder 能填充 KV Cache 吗？**
+
+如果业务应用场景中会将生成的 context 也作为下一轮的输入，还可能需要考虑 Decoder 填充 KV Cache，用于下一轮的 prefix caching 复用。这时候，KV Cache Store/Pool 的存在，对流畅交互有比较大的意义。
+
+## **六、KV Cache Store/Pool 的设计抉择**
+
+有别于我们通常的 KV 存储，由于 GPU、[RDMA](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=RDMA&zhida_source=entity)（IB、RoCE）、NVLink 新硬件的存在，KV Cache Store/Pool 的设计抉择点会非常多。
+
+在存储上，有 VRAM、DRAM、NVMe SSD，要选择 KV Cache Store 使用哪些介质。虽然对于 MHA 来说，因为 KV Cache 太大，基于 SSD 存储并不现实，但是对于 [MQA](https://zhida.zhihu.com/search?content_id=254589905&content_type=Article&match_order=1&q=MQA&zhida_source=entity)、MLA 来说，NVMe SSD 并不是不可用。
+
+在通信上，有 TCP、NVLink、RDMA、GPU Direct RDMA、NVMe over RDMA。为了更高的性能，KV Cache Store 在数据面上可能要考虑使用更快、更直接的传输方法。但 RDMA 对数据访问的抽象比 TCP 复杂很多，TCP 就是一端发一端收，但 RDMA 很多是单边操作。比如数据从 A 机 VRAM 发送到 B 机 DRAM，可能有以下方法：
+
+- A 从 VRAM 复制到 DRAM 再写 B 的 DRAM
+- A 从 VRAM 复制到 DRAM 再让 B 读 A 的 DRAM
+- A 直接从 VRAM 复制到 B 的 DRAM
+- B 直接读 A 的 VRAM
+
+如果再加上 NVMe over RDMA，那要考虑的东西就更多了。P 发送到 Store，D 从 Store 接收，到底要通过哪些模式支持，是需要思考的。目前来看，预填充节点更适合单边写到 Store，这样能减少状态传输，更快地释放显存，但如果预填充节点也要读 prefix cache，那情况可能反过来；解码节点可能更适合单边读 Store。
+
+在分布式架构上，无论是做集群式的 KV Cache Store，还是单机 side-car 式的 KV Cache Store，都需要存储一些 meta，并且在 P、D 之间传输一些控制信息。学术界有一些完全基于 RDMA 实现的分布式 KV 数据库，但目前看复杂度还是比较高，也没有开源的实现。目前业界实现还是倾向于使用传统的 RPC 方式来传输控制信息，并且通过分布式技术方案做 meta 节点的一致性、可靠性设计。
+
+在接口 API 上，KV Cache Store 比传统的 KV Store 要复杂一些。比如要支持写的时候分 layer 写，读的时候能读到连续的内容；还可能要支持队列式的读，写完的 layer 可以很快被读走。如果要支持 prefix caching，还存在 KV Cache 的链式关系，写的时候不仅要分 layer，还要分 page，读的时候也是。TP/SP 等并行计算机制，对 API 可能还会有一些额外的要求。
+
+在数据结构上，如果希望从 VRAM 直接写 Store，减少一次复制，引擎本身的 KV Cache 数据结构就需要与 Store 的数据结构进行一定程度的对齐；如果希望同时兼做 prefix caching，那 store 的数据排布就要考虑相同 prefix 的 page 更接近，甚至共享。比如用 prompt 的所有 page 的 hash 组成 string，按前缀 range 分桶，桶内对相同前缀做 merge/引用等等，这在存储优化上会是一个挑战。
+
+整体来看，PD 分离的实现上有很多架构问题需要抉择，目前还没有一个理想的架构方案，或许未来也会是根据不同场景有很多参数化的灵活配置。

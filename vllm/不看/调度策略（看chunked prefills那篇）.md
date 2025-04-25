@@ -1,0 +1,28 @@
+在“开席”之前，咱们先来热热身！看看下面大模型推理调度的“高频面试题”，你能答上来几道？
+
+1.调度策略有哪些？各有什么优缺点
+
+2.什么时候会触发调度？
+
+3.Continuous batch 下 prefill batch 里 prompt 长度各不相同时需要 Padding 吗？为什么
+（[图文详解 Continuous Batch：不写 CUDA Kernel 也能成倍优化推理效率 - 知乎](https://zhuanlan.zhihu.com/p/876908831)）
+答：起码有两种，
+	static batch，按批输入，然后prefill，然后一起decode，然后输出。
+	continuous batch，动态输入。模型每完成一个批次的 prefill 或者 decode 阶段，调度器就立即干活，尽量把下次推理的 batch 搞大 —— GPU 特别擅长大批量推理。
+
+
+Continuous Batching，又叫 Dynamic Batching，是一种按 iteration（每次前向推理）来调度的方式。这个想法最早出现在 2022 年的 [Orca 推理框架](https://zhida.zhihu.com/search?content_id=248995515&content_type=Article&match_order=1&q=Orca+%E6%8E%A8%E7%90%86%E6%A1%86%E6%9E%B6&zhida_source=entity)中，但由于缺少实际应用，如今已经不太被提起了。反观 vLLM 在 [Chatbot Arena](https://zhida.zhihu.com/search?content_id=248995515&content_type=Article&match_order=1&q=Chatbot+Arena&zhida_source=entity) 和 [http://LMSys.org](https://link.zhihu.com/?target=http%3A//LMSys.org) 上有真实流量，逐渐成为大模型推理的事实标准。
+
+## [Static Batch](https://zhida.zhihu.com/search?content_id=248995515&content_type=Article&match_order=1&q=Static+Batch&zhida_source=entity)**
+
+在 Continuous Batch 之前，最常见的调度方式是 Static Batch。
+
+Static Batch 的特点是按请求分批推理，早到的请求要等晚到的（S1要等S4），“要走一起走”。它好像老家火车站的黑车。即便某个请求早完成（S3最早结束），它也得等所有请求完成后才能释放资源。这种方式导致 GPU 资源浪费且请求延迟高。不过，它的实现简单，调度器只要静态规划好当前请求的批次，等模型运行完后再继续调度下一个批次就行。
+
+## **Continuous Batch**
+
+顾名思义就是“持续组 batch” 的策略，
+
+可以看到调度器现在很忙，模型每完成一个批次的 prefill 或者 decode 阶段，调度器就立即干活，尽量把下次推理的 batch 搞大 —— GPU 特别擅长大批量推理。这样，早到的请求能快速开始，早结束的也能及时释放资源。和 Static Batch 的动图一对比，KV Cache 利用率明显提高了！
+
+细心的朋友可能已经注意到：上面动图中，调度器优先执行 prefill 阶段。这样一来，当有 decode 请求时，可以最大化批次的规模，提高推理效率！
